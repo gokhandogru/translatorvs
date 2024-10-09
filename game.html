@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Translator Jump Game</title>
+    <style>
+        body {
+            background-color: #87CEEB;
+            overflow: hidden;
+            font-family: Arial, sans-serif;
+        }
+        #gameCanvas {
+            background: #8B0000;
+            display: block;
+            margin: 0 auto;
+            border: 2px solid #333;
+        }
+        #gameRules {
+            text-align: center;
+            font-size: 18px;
+            color: #333;
+            margin-top: 20px;
+        }
+        #score {
+            position: absolute;
+            top: 10px;
+            right: 20px;
+            font-size: 20px;
+            color: #333;
+        }
+        #controls {
+            text-align: center;
+            margin-top: 20px;
+        }
+        button {
+            font-size: 16px;
+            padding: 10px;
+            margin: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div id="score">Enemies Passed: 0</div>
+    <canvas id="gameCanvas" width="800" height="400"></canvas>
+    <div id="controls">
+        <button id="startButton">Start Game</button>
+        <button id="pauseButton">Pause Game</button>
+    </div>
+    <div id="gameRules">
+        <p>Welcome to the Translator Jump Game! Use the Space key to jump over the obstacles. Keep pressing the Space key to hover in the air.<br>
+        Avoid words like "Machine Translation", "Low Rates", and other challenges that bother translators.<br>
+        Good luck!</p>
+    </div>
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const scoreElement = document.getElementById('score');
+        const startButton = document.getElementById('startButton');
+        const pauseButton = document.getElementById('pauseButton');
+
+        let translator = {
+            x: 50,
+            y: 300,
+            width: 25, // Thinner translator
+            height: 80, // Adjusted height for more human-like appearance
+            speedY: 0,
+            jumpStrength: -20, // Initial jump strength
+            gravity: 0.6
+        };
+
+        let words = [];
+        let enemiesPassed = 0;
+        const initialWordMessages = [
+            "Machine Translation", "LLMs", "Translation Memory", "Late Replies", "Low Rates", "Bad Reviewer", "Bad Agency", "Scammers", "Late Payment", "Bad Source Text", "Hard Terms", "NDAs", "No Reply to Queries", "Bad Doc Styles", "Job Uncertainty"
+        ];
+        let wordMessages = [...initialWordMessages];
+        let wordSpeed = -3;
+        let gameInterval, createWordInterval;
+        let isGamePaused = true;
+
+        function createWord() {
+            if (wordMessages.length === 0) {
+                // Shuffle the wordMessages after the first complete cycle
+                wordMessages = [...initialWordMessages].sort(() => Math.random() - 0.5);
+                wordSpeed *= 1.05; // Increase speed by 5% after each full round
+            }
+            const nextWord = wordMessages.shift();
+            const word = {
+                x: canvas.width,
+                y: canvas.height - translator.height / 2 - Math.floor(Math.random() * 30), // Pass at a lower level
+                text: nextWord,
+                speedX: wordSpeed
+            };
+            words.push(word);
+            // Increase jump strength proportionally for longer words
+            if (nextWord.length > 10) {
+                translator.jumpStrength = -25;
+            } else {
+                translator.jumpStrength = -20;
+            }
+        }
+
+        function drawTranslator() {
+            ctx.fillStyle = '#FFD700';
+            // Draw a more human-like figure
+            ctx.fillRect(translator.x, translator.y, translator.width, translator.height); // Body
+            // Draw head with cute face
+            ctx.fillStyle = '#0000FF'; // Blue head
+            ctx.beginPath();
+            ctx.arc(translator.x + translator.width / 2, translator.y - 20, 20, 0, Math.PI * 2); // Head
+            ctx.fill();
+            // Draw cute eyes (larger and more expressive)
+            ctx.fillStyle = '#FFF';
+            ctx.beginPath();
+            ctx.arc(translator.x + translator.width / 2 - 8, translator.y - 25, 5, 0, Math.PI * 2); // Left eye
+            ctx.fill();
+            ctx.beginPath();
+            ctx.arc(translator.x + translator.width / 2 + 8, translator.y - 25, 5, 0, Math.PI * 2); // Right eye
+            ctx.fill();
+            // Draw pupils
+            ctx.fillStyle = '#000';
+            ctx.beginPath();
+            ctx.arc(translator.x + translator.width / 2 - 8, translator.y - 25, 2, 0, Math.PI * 2); // Left pupil
+            ctx.fill();
+            ctx.beginPath();
+            ctx.arc(translator.x + translator.width / 2 + 8, translator.y - 25, 2, 0, Math.PI * 2); // Right pupil
+            ctx.fill();
+            // Draw cute mouth (small smile)
+            ctx.fillStyle = '#FF69B4'; // Pink mouth
+            ctx.beginPath();
+            ctx.arc(translator.x + translator.width / 2, translator.y - 10, 5, 0, Math.PI, false); // Small smile
+            ctx.stroke();
+        }
+
+        function drawWords() {
+            ctx.fillStyle = '#FFF';
+            ctx.font = '20px Arial';
+            words.forEach(word => {
+                ctx.fillText(word.text, word.x, word.y);
+            });
+        }
+
+        function updateTranslator() {
+            translator.speedY += translator.gravity;
+            translator.y += translator.speedY;
+
+            if (translator.y > canvas.height - translator.height) {
+                translator.y = canvas.height - translator.height;
+                translator.speedY = 0;
+            }
+            if (translator.y - 40 < 0) { // Prevent head from disappearing above canvas
+                translator.y = 40;
+                translator.speedY = -translator.speedY * 0.5; // Bounce back with reduced speed
+            }
+        }
+
+        function updateWords() {
+            words.forEach(word => {
+                word.x += word.speedX;
+            });
+
+            words = words.filter(word => {
+                if (word.x + ctx.measureText(word.text).width > 0) {
+                    return true;
+                } else {
+                    enemiesPassed++;
+                    scoreElement.textContent = `Enemies Passed: ${enemiesPassed}`;
+                    if (enemiesPassed === 10) {
+                        alert('10 enemies passed! Congrats!');
+                    }
+                    if (enemiesPassed === 100) {
+                        alert('Game Over! You passed 100 enemies! Great job!');
+                        resetGame();
+                    }
+                    return false;
+                }
+            });
+        }
+
+        function checkCollisions() {
+            words.forEach(word => {
+                if (
+                    translator.x < word.x + ctx.measureText(word.text).width &&
+                    translator.x + translator.width > word.x &&
+                    translator.y < word.y &&
+                    translator.y + translator.height > word.y - 20
+                ) {
+                    alert('Game Over! Have you considered being a chef instead?');
+                    resetGame();
+                }
+            });
+        }
+
+        function resetGame() {
+            words = [];
+            translator.y = 300;
+            translator.speedY = 0;
+            wordSpeed = -3; // Reset speed for easier start
+            wordMessages = [...initialWordMessages]; // Reset words in the original order
+            enemiesPassed = 0; // Reset enemies passed
+            scoreElement.textContent = `Enemies Passed: ${enemiesPassed}`;
+            clearInterval(gameInterval);
+            clearInterval(createWordInterval);
+            isGamePaused = true;
+        }
+
+        function gameLoop() {
+            if (!isGamePaused) {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                drawTranslator();
+                drawWords();
+                updateTranslator();
+                updateWords();
+                checkCollisions();
+                requestAnimationFrame(gameLoop);
+            }
+        }
+
+        function jump() {
+            translator.speedY = translator.jumpStrength; // Allow multiple jumps to stay in the air
+        }
+
+        document.addEventListener('keydown', (event) => {
+            if (event.code === 'Space' && !isGamePaused) {
+                jump();
+            }
+        });
+
+        startButton.addEventListener('click', () => {
+            if (isGamePaused) {
+                isGamePaused = false;
+                createWordInterval = setInterval(createWord, 2000);
+                gameLoop();
+            }
+        });
+
+        pauseButton.addEventListener('click', () => {
+            isGamePaused = true;
+            clearInterval(createWordInterval);
+        });
+    </script>
+</body>
+</html>
